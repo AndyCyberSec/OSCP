@@ -9,7 +9,7 @@ OSVDB: 116733
 
 URL: [http://seclists.org/fulldisclosure/2015/Jan/5](http://seclists.org/fulldisclosure/2015/Jan/5)
 
-Original metasploit module: url
+Original metasploit module: https://www.exploit-db.com/exploits/35845
 
 ### Usage
 ```
