@@ -39,7 +39,7 @@ def banner():
 """)
 
     print("Usage: script.py file.war host port")
-    print("35845.py shell.war 10.11.1.145 8080")
+    print("35845.py shell.war 10.10.10.10 8080")
 
 def make_ear(war_payload, war_app_base, ear_app_base, display_name, ear_file_name):
     # Read in the war file created by msfvenom
