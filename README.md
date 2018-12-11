@@ -1,5 +1,6 @@
 # OSCP
 This is a repository which contains custom/ported POC exploits. They have been made for study and learning purposes.
+Currently under development.
 
 ## 35845.py
 
